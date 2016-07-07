@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
+    "pretest": "dropdb builder-test --if-exists && createdb builder-test && psql builder-test < test/seed.sql",
     "test": "mocha"
   },
   "keywords": [],
