@@ -1,7 +1,12 @@
-const builder = require('../src/builder');
+const connection = require('../src/builder');
 const expect = require('chai').expect;
 
 describe("builder", function () {
+  let builder;
+
+  beforeEach(function () {
+    builder = connection({database: "builder-test"});
+  })
 
   describe("select", function () {
 
@@ -17,29 +22,17 @@ describe("builder", function () {
   })
 
   describe("then", function () {
-    it("returns a promise which yields the results", function (done) {
-      var pg = require('pg');
-      var client = new pg.Client({
-        database: 'builder-test',
-      });
-      client.connect(function (err) {
-        if (err) throw err;
-        client.query('insert into users (name, age) values ($1, $2)', ['John', 24], function (err, result) {
-          if (err) throw err;
-
+    it("returns a promise which yields the results", function () {
+      return builder.raw('insert into users (name, age) values ($1, $2)', ['John', 24])
+        .then(function () {
           let statement = builder('users').select('name', 'age');
-          statement.then(function (rows) {
+          return statement.then(function (rows) {
             expect(rows).to.deep.equal([
               {name: 'John', age: 24},
             ])
-            done()
-          }, done)
-
-        });
-      });
+          })
+        })
     });
   })
-
-
 
 })
