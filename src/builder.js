@@ -8,23 +8,11 @@ function connection(config){
     let sql = [];
     let bindings = [];
     let action = "select";
+    let mappings = { select, insert, update }
+
     return {
       toSQL: function () {
-        let columnString, string;
-        switch (action) {
-          case 'select':
-            columnString = columns.length ? columns.map(e => `"${e}"`).join(", ") : "*"
-            string = `select ${columnString} from ${tableName}`
-            if (sql.length) string += ` where ${sql.map(clause => `"${clause}" = ?`).join(" and ")}`
-            break;
-
-          case 'insert' :
-            columnString = columns.map(e => `"${e}"`).join(", ")
-            string = `insert into ${tableName} (${columnString}) values (${bindings.map(binding => "?").join(", ")})`
-            break;
-        }
-
-        return { sql: string, bindings }
+        return mappings[action]()
       },
       select: function(...cols){
         columns = columns.concat(cols)
@@ -35,24 +23,51 @@ function connection(config){
         return builder.raw(statement.sql, statement.binds).then(callback)
       },
       where: function(args){
-        for (var val in args) {
-          if (args.hasOwnProperty(val)) {
-            bindings.push(args[val]);
-            sql.push(val)
-          }
-        }
+        populate(args, bindings, sql);
         return this;
       },
       insert: function(args){
         action = "insert"
-        for (var val in args) {
-          if (args.hasOwnProperty(val)) {
-            bindings.push(args[val]);
-            columns.push(val)
-          }
-        }
+        populate(args, bindings, columns);
         return this;
+      },
+      update: function(args, whereClause){
+        action = "update"
+        populate(args, bindings, columns);
+        return this.where(whereClause)
       }
+    }
+
+    function populate(object, valueBucket, keyBucket) {
+      for (var val in object) {
+        if (object.hasOwnProperty(val)) {
+          valueBucket.push(object[val]);
+          keyBucket.push(val)
+        }
+      }
+    }
+
+    function select() {
+      let columnString, string;
+      columnString = columns.length ? columns.map(e => `"${e}"`).join(", ") : "*"
+      string = `select ${columnString} from ${tableName}`
+      if (sql.length) string += ` where ${sql.map(clause => `"${clause}" = ?`).join(" and ")}`
+      return { sql: string, bindings }
+    }
+
+    function insert() {
+      let columnString, string;
+      columnString = columns.map(e => `"${e}"`).join(", ")
+      string = `insert into ${tableName} (${columnString}) values (${bindings.map(binding => "?").join(", ")})`
+      return { sql: string, bindings }
+    }
+
+    function update() {
+      let setString = columns.map(e => `"${e}" = ?`).join(", ")
+      let whereString
+      if (sql.length) whereString = ` where ${sql.map(clause => `"${clause}" = ?`).join(" and ")}`
+      string = `update ${tableName} set ${setString}${whereString}`
+      return { sql: string, bindings }
     }
   }
 

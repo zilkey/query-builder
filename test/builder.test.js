@@ -35,6 +35,13 @@ describe("builder", function () {
     });
   })
 
+  describe("update", function () {
+    it("builds an update statement", function () {
+      let statement = builder('users').update({name: 'Joe', age: 18}, {id: 2});
+      expect(statement.toSQL()).to.deep.eq({sql: `update users set "name" = ?, "age" = ? where "id" = ?`, bindings: ['Joe', 18, 2]});
+    });
+  })
+
   describe("chaining", function () {
     it("allows clauses to be added in any order", function () {
       let statement = builder('users')
